@@ -5,11 +5,31 @@ const { exec } = require("child_process");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const ACCESS_TOKEN = process.env.ACCESS_TOKEN
+const ACCESS_TOKEN = process.env.ACCESS_TOKEN;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
+const VERIFY_TOKEN = "Mon_Token"; // même token que tu mets dans Meta
 
 app.use(express.json());
 
+// Route GET pour la validation du webhook par Meta
+app.get("/webhook", (req, res) => {
+  const mode = req.query["hub.mode"];
+  const token = req.query["hub.verify_token"];
+  const challenge = req.query["hub.challenge"];
+
+  if (mode && token) {
+    if (mode === "subscribe" && token === VERIFY_TOKEN) {
+      console.log("Webhook vérifié !");
+      res.status(200).send(challenge);
+    } else {
+      res.sendStatus(403);
+    }
+  } else {
+    res.sendStatus(400);
+  }
+});
+
+// Route POST pour recevoir les messages WhatsApp
 app.post("/webhook", async (req, res) => {
   const message = req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
 
@@ -68,7 +88,6 @@ app.post("/webhook", async (req, res) => {
             .catch((err) => console.error("Erreur envoi WhatsApp :", err));
         });
       });
-
     } catch (e) {
       console.error("❌ Erreur générale :", e.message);
     }
@@ -82,3 +101,4 @@ app.post("/webhook", async (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Serveur démarré sur le port ${PORT}`);
 });
+
