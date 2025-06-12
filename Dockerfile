@@ -1,4 +1,4 @@
-FROM node:18
+modifie FROM node:18
 
 # Installer tesseract et python
 RUN apt-get update && \
