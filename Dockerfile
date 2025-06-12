@@ -1,18 +1,16 @@
 FROM node:18
 
-# Installer Tesseract et dépendances
-RUN apt-get update && apt-get install -y tesseract-ocr
+# Installer tesseract et python
+RUN apt-get update && \
+    apt-get install -y tesseract-ocr python3 python3-pip && \
+    ln -s /usr/bin/python3 /usr/bin/python
 
-# Installer les dépendances Node
+# Copie des fichiers
 WORKDIR /app
-COPY package*.json ./
-RUN npm install
-
-# Copier le reste du code
 COPY . .
 
-# Exposer le port
-EXPOSE 3000
+# Installer les dépendances Node.js
+RUN npm install
 
-# Lancer l'app
+# Commande de démarrage (à adapter selon votre projet)
 CMD ["npm", "start"]
