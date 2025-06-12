@@ -5,7 +5,7 @@ const { exec } = require("child_process");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const ACCESS_TOKEN = "TON_ACCESS_TOKEN_ICI"; // récupéré sur Meta
+const ACCESS_TOKEN = "Mon_Token"; // récupéré sur Meta
 const PHONE_NUMBER_ID = 671376889387505;
 
 app.use(express.json());
