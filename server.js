@@ -1,60 +1,84 @@
 const express = require("express");
+const axios = require("axios");
+const fs = require("fs");
+const { exec } = require("child_process");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const ACCESS_TOKEN = "TON_ACCESS_TOKEN_ICI"; // récupéré sur Meta
+const PHONE_NUMBER_ID = "TON_PHONE_NUMBER_ID_ICI";
+
 app.use(express.json());
 
-app.get("/webhook", (req, res) => {
-  const VERIFY_TOKEN = process.env.VERIFY_TOKEN || "mon_token_OCRLingo";
+app.post("/webhook", async (req, res) => {
+  const message = req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
 
-  const mode = req.query["hub.mode"];
-  const token = req.query["hub.verify_token"];
-  const challenge = req.query["hub.challenge"];
+  if (message && message.type === "image") {
+    const from = message.from;
+    const mediaId = message.image.id;
 
-  if (mode && token && mode === "subscribe" && token === VERIFY_TOKEN) {
-    console.log("✅ Webhook vérifié !");
-    res.status(200).send(challenge);
-  } else {
-    console.log("❌ Vérification échouée.");
-    res.sendStatus(403);
-  }
-});
+    try {
+      // 1. Récupère l'URL de téléchargement de l'image
+      const mediaResponse = await axios.get(
+        `https://graph.facebook.com/v18.0/${mediaId}`,
+        {
+          headers: { Authorization: `Bearer ${ACCESS_TOKEN}` },
+        }
+      );
 
-app.post("/webhook", (req, res) => {
-  const body = req.body;
+      const mediaUrl = mediaResponse.data.url;
 
-  console.log("📨 Requête reçue :", JSON.stringify(body, null, 2));
+      // 2. Télécharge l'image et la sauvegarde localement
+      const imagePath = "./temp/image.jpg";
+      const imageDownload = await axios.get(mediaUrl, {
+        headers: { Authorization: `Bearer ${ACCESS_TOKEN}` },
+        responseType: "stream",
+      });
 
-  if (body.object === "whatsapp_business_account") {
-    const entry = body.entry?.[0];
-    const changes = entry?.changes?.[0];
-    const message = changes?.value?.messages?.[0];
+      const writer = fs.createWriteStream(imagePath);
+      imageDownload.data.pipe(writer);
 
-    if (message) {
-      const from = message.from;
-      const type = message.type;
-      console.log(`📥 Nouveau message de ${from}, type: ${type}`);
+      writer.on("finish", () => {
+        // 3. Appelle le script OCR
+        exec(`python ocr.py ${imagePath}`, (error, stdout, stderr) => {
+          if (error || stderr) {
+            console.error("Erreur OCR :", error || stderr);
+            return;
+          }
 
-      if (type === "image") {
-        const mediaId = message.image.id;
-        console.log("🖼 ID de l’image reçue :", mediaId);
+          const texteOCR = stdout;
 
-        // Appeler ton OCR Python ici (via API ou fonction)
-      }
+          // 4. Envoie le résultat OCR via WhatsApp
+          axios
+            .post(
+              `https://graph.facebook.com/v18.0/${PHONE_NUMBER_ID}/messages`,
+              {
+                messaging_product: "whatsapp",
+                to: from,
+                text: { body: texteOCR },
+              },
+              {
+                headers: {
+                  Authorization: `Bearer ${ACCESS_TOKEN}`,
+                  "Content-Type": "application/json",
+                },
+              }
+            )
+            .then(() => console.log("✅ Message OCR envoyé à l'utilisateur"))
+            .catch((err) => console.error("Erreur envoi WhatsApp :", err));
+        });
+      });
 
-      res.sendStatus(200);
-    } else {
-      res.sendStatus(404);
+    } catch (e) {
+      console.error("❌ Erreur générale :", e.message);
     }
+
+    res.sendStatus(200);
   } else {
     res.sendStatus(404);
   }
 });
 
-app.get("/", (req, res) => {
-  res.send("Hello from webhook server");
-});
-
 app.listen(PORT, () => {
-  console.log(`🚀 Serveur Webhook démarré sur lesss port ${PORT}`);
+  console.log(`🚀 Serveur démarré sur le port ${PORT}`);
 });
