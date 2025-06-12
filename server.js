@@ -6,7 +6,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 const ACCESS_TOKEN = "TON_ACCESS_TOKEN_ICI"; // récupéré sur Meta
-const PHONE_NUMBER_ID = "TON_PHONE_NUMBER_ID_ICI";
+const PHONE_NUMBER_ID = 671376889387505;
 
 app.use(express.json());
 
