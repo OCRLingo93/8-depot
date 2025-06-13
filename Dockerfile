@@ -1,17 +1,17 @@
 FROM node:18
 
-# Installer tesseract et python
+# Installer tesseract, python et créer l'alias python → python3
 RUN apt-get update && \
-    apt-get install -y tesseract-ocr python3 python3-pip && \
-    ln -s /usr/bin/python3 /usr/local/bin/python
+    apt-get install -y tesseract-ocr python3 python3-pip python-is-python3
 
-# Copie des fichiers
+# Créer le répertoire de travail
 WORKDIR /app
+
+# Copier les fichiers
 COPY . .
 
 # Installer les dépendances Node.js
 RUN npm install
 
-# Commande de démarrage (à adapter selon votre projet)
+# Lancer l'application
 CMD ["npm", "start"]
-
